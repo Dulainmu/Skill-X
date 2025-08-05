@@ -1,0 +1,56 @@
+const jwt = require('jsonwebtoken');
+
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  
+  // Check if Authorization header exists
+  if (!authHeader) {
+    return res.status(401).json({ 
+      message: 'Not authenticated',
+      error: 'Authorization header missing'
+    });
+  }
+  
+  // Check if it starts with 'Bearer '
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ 
+      message: 'Not authenticated',
+      error: 'Invalid authorization format. Expected: Bearer <token>'
+    });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  
+  // Check if token exists
+  if (!token) {
+    return res.status(401).json({ 
+      message: 'Not authenticated',
+      error: 'Token is missing from Authorization header'
+    });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = { id: decoded.id };
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        message: 'Not authenticated',
+        error: 'Token has expired'
+      });
+    } else if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        message: 'Not authenticated',
+        error: 'Invalid token'
+      });
+    } else {
+      return res.status(401).json({ 
+        message: 'Not authenticated',
+        error: 'Token verification failed'
+      });
+    }
+  }
+};
+
+module.exports = authMiddleware; 
